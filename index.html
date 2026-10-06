@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Folk vs. Popular Housing</title>
+  <meta name="description" content="A narrated 3D and Cardboard VR field trip for AP Human Geography: watch a folk house and a popular house get built, then explore inside and out.">
+  <meta name="theme-color" content="#14181f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "./js/vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <!-- ===================== Home screen ===================== -->
+  <main id="home">
+    <header class="home-head">
+      <p class="eyebrow">AP Human Geography · Unit 3</p>
+      <h1>Folk vs. Popular Housing</h1>
+      <p class="lede">Watch two houses get built, step by step, then explore them inside and out. Compare who built each one, what it's made of, and why it looks the way it does.</p>
+    </header>
+
+    <section class="cards">
+      <article class="card" data-house="gassho">
+        <div class="art art-folk" aria-hidden="true">
+          <svg viewBox="0 0 200 110"><path d="M100 8 L40 92 H160 Z" fill="#7d6a4c"/><path d="M100 8 L52 76 H148 Z" fill="#8f7a58"/><rect x="62" y="80" width="76" height="22" fill="#4a3324"/><rect x="88" y="44" width="24" height="16" fill="#efe9da"/><rect x="80" y="64" width="40" height="10" fill="#efe9da"/><rect x="34" y="100" width="132" height="4" fill="#6b5843"/></svg>
+        </div>
+        <div class="card-body">
+          <span class="tag tag-folk">Folk housing</span>
+          <h2>Gassho-zukuri farmhouse</h2>
+          <p class="place">Shirakawa-go, Japan</p>
+          <p>A thatched farmhouse built by a whole village, shaped by heavy mountain snow.</p>
+          <button class="btn primary start" data-house="gassho">Start the tour</button>
+        </div>
+      </article>
+
+      <article class="card" data-house="levittown">
+        <div class="art art-pop" aria-hidden="true">
+          <svg viewBox="0 0 200 110"><rect x="20" y="100" width="160" height="4" fill="#9a9a9a"/><path d="M36 60 L100 32 L164 60 Z" fill="#4a4c50"/><rect x="44" y="60" width="112" height="40" fill="#c9d8b8"/><rect x="56" y="70" width="22" height="16" fill="#a9c8d8" stroke="#fff" stroke-width="2"/><rect x="92" y="70" width="14" height="30" fill="#8f3b33"/><rect x="120" y="70" width="22" height="16" fill="#a9c8d8" stroke="#fff" stroke-width="2"/><rect x="58" y="34" width="10" height="20" fill="#a5523a"/></svg>
+        </div>
+        <div class="card-body">
+          <span class="tag tag-pop">Popular housing</span>
+          <h2>Levittown ranch house</h2>
+          <p class="place">Levittown, New York, 1949</p>
+          <p>A mass-produced suburban house, one of thousands built on an assembly line.</p>
+          <button class="btn primary start" data-house="levittown">Start the tour</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="options">
+      <div class="option">
+        <span class="opt-label">How are you viewing?</span>
+        <div class="segmented" role="radiogroup" aria-label="Viewing mode">
+          <button role="radio" aria-checked="true" data-mode="screen">On this screen</button>
+          <button role="radio" aria-checked="false" data-mode="vr">Cardboard VR</button>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="opt-sound" checked> <span>Narration voice</span></label>
+      <label class="toggle"><input type="checkbox" id="opt-captions" checked> <span>Captions</span></label>
+    </section>
+    <p class="vr-note" id="vr-note" hidden></p>
+    <label class="toggle small" id="simple-vr-wrap" hidden><input type="checkbox" id="opt-simple-vr"> <span>Use simple split-screen VR instead (try this if VR doesn't start)</span></label>
+
+    <footer class="home-foot">
+      <p><strong>Controls:</strong> drag to look around (or use the arrow keys). Click the blue rings to move and the gold <b>i</b> buttons to learn more. In Cardboard VR, look at something for two seconds to select it, and look down at your feet for the menu.</p>
+    </footer>
+  </main>
+
+  <!-- ===================== In-experience HUD ===================== -->
+  <div id="hud" hidden>
+    <header class="topbar">
+      <button class="btn ghost" id="btn-home" aria-label="Back to houses">← Houses</button>
+      <div class="title">
+        <span class="tag" id="hud-tag">Folk housing</span>
+        <strong id="hud-title">House</strong>
+      </div>
+      <div class="tools">
+        <button class="icon" id="btn-cc" aria-pressed="true" title="Captions">CC</button>
+        <button class="icon" id="btn-sound" aria-pressed="true" title="Narration">
+          <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path class="waves" d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon" id="btn-motion" aria-pressed="false" title="Look around by moving your phone" hidden>
+          <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 9a9 9 0 0 0 0 6M21.5 9a9 9 0 0 1 0 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon wide" id="btn-vr" title="Cardboard VR" hidden>VR</button>
+      </div>
+    </header>
+
+    <div class="progress" id="progress">
+      <div class="bar"><span id="progress-fill"></span></div>
+      <p id="progress-label">Step 1</p>
+    </div>
+
+    <div class="bottom">
+      <p id="caption" class="caption" aria-live="polite"></p>
+      <div class="controls" id="controls-build">
+        <button class="btn" id="btn-pause">Pause</button>
+        <button class="btn" id="btn-next">Next step ›</button>
+        <button class="btn" id="btn-skip">Skip to the tour »</button>
+      </div>
+      <div class="controls explore" id="controls-explore" hidden>
+        <div class="chips" id="chips"></div>
+        <div class="row">
+          <button class="btn" id="btn-replay">↺ Watch it built again</button>
+          <button class="btn primary" id="btn-switch">Switch house →</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="info" id="info" hidden>
+      <button class="close" id="info-close" aria-label="Close">×</button>
+      <h3 id="info-title"></h3>
+      <p id="info-body"></p>
+    </aside>
+
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <button id="vr-exit" hidden aria-label="Exit VR">✕</button>
+  <div id="rotate" hidden><div><div class="phone"></div><p>Turn your phone sideways, then slide it into the viewer.</p></div></div>
+  <div id="loading" hidden><div class="spinner"></div><p>Building the scene…</p></div>
+  <div id="fatal" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
