@@ -180,7 +180,13 @@ function boot() {
     app.setSound(on);
     ui.onSoundChange(on);
   });
-  if (touch) {
+  // Embedded copies (e.g. a sandboxed preview frame) can't use motion sensors or VR.
+  const noVR = !!window.HOUSING_NO_VR;
+  if (noVR) {
+    $('.options .option').hidden = true;
+    $('#vr-help').hidden = true;
+  }
+  if (touch && !noVR) {
     $('#btn-motion').hidden = false;
     $('#btn-vr').hidden = false;
   }
