@@ -150,7 +150,7 @@ export function makeHotspot(title, onSelect) {
     interactive: true, kind: 'hotspot', onSelect,
     hover(on) { hot = on; },
     tick(t, dist) {
-      const k = Math.min(5, Math.max(1, dist / 7)) * (hot ? 1.25 : 1);
+      const k = Math.min(5, Math.max(0.6, dist / 5)) * (hot ? 1.25 : 1);
       orb.scale.setScalar(0.45 * k);
       tag.scale.set(tagW * k, tagH * k, 1);
       tag.position.y = -0.36 * k;

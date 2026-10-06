@@ -63,6 +63,7 @@ export default {
     };
 
     // ------------------------------------------------------------ environment
+    let towerG;
     const env = new THREE.Group();
     root.add(env);
     env.add(sky('#8db8e6', '#eef3f6'));
@@ -99,7 +100,8 @@ export default {
         p.block(tx + s * 1.55 - 0.04, H + 0.65, tz - 1.6, tx + s * 1.55 + 0.04, H + 0.72, tz + 1.6, wood);
       }
       for (const [dx, dz] of [[-1.55, -1.55], [1.55, -1.55], [-1.55, 1.55], [1.55, 1.55]]) p.block(tx + dx - 0.04, H, tz + dz - 0.04, tx + dx + 0.04, H + 0.7, tz + dz + 0.04, wood);
-      env.add(p.build({ center: false }));
+      towerG = p.build({ center: false });
+      env.add(towerG);
     }
 
     const add = part => { const g = part.build(); house.add(g); return g; };
@@ -172,12 +174,32 @@ export default {
     slab.block(X0, 0.0, ZB, X1, FLR, ZF, M.concrete);
     const slabG = add(slab);
 
+    // ------------------------------------------------------------ floor plan
+    // Laid out from the 1949 Levitt ranch sales-brochure plan (32' x 25').
+    // PX(v): feet along the 32' side, from the bedroom end (west) to the kitchen end (east).
+    // PZ(u): feet across the 25' side, from the rear window wall to the street-side front wall.
+    const PX = v => X0 + v * (X1 - X0) / 32;
+    const PZ = u => ZB + u * (ZF - ZB) / 25;
+    const doorH = FLR + 2.05;
+
     // ------------------------------------------------------------ openings (shared by framing, walls, linings)
     const O = {
-      front: [{ from: -4.1, to: -2.5, y0: FLR + 1.0, y1: FLR + 2.1 }, { from: -1.0, to: -0.1, y0: FLR, y1: FLR + 2.05 }, { from: 2.4, to: 3.8, y0: FLR + 0.95, y1: FLR + 2.1 }],
-      back: [{ from: -3.9, to: -0.7, y0: FLR + 0.5, y1: FLR + 2.15 }, { from: 2.2, to: 3.6, y0: FLR + 0.95, y1: FLR + 2.1 }],
-      east: [{ from: 1.4, to: 2.8, y0: FLR + 0.95, y1: FLR + 2.1 }, { from: -2.6, to: -1.2, y0: FLR + 0.95, y1: FLR + 2.1 }],
-      west: [{ from: 2.1, to: 3.0, y0: FLR + 1.1, y1: FLR + 2.0 }],
+      front: [                                                                     // street side
+        { from: PX(7.2), to: PX(11.4), y0: FLR + 0.95, y1: FLR + 2.1 },             // small bedroom
+        { from: PX(13.6), to: PX(16.4), y0: FLR + 1.45, y1: FLR + 2.1 },            // bathroom (high)
+        { from: PX(21.3), to: PX(27.4), y0: FLR + 1.0, y1: FLR + 2.1 },             // kitchen
+        { from: PX(29.0), to: PX(31.4), y0: FLR, y1: doorH },                       // front door, into the kitchen
+      ],
+      back: [                                                                      // backyard side
+        { from: PX(1.2), to: PX(5.6), y0: FLR + 0.95, y1: FLR + 2.1 },              // big bedroom
+        { from: PX(12.6), to: PX(15.2), y0: FLR, y1: doorH },                       // back door at the stairs
+        { from: PX(16.4), to: PX(31.4), y0: FLR + 0.3, y1: FLR + 2.25 },            // Thermopane window wall
+      ],
+      east: [],
+      west: [
+        { from: PZ(1.0), to: PZ(4.8), y0: FLR + 0.95, y1: FLR + 2.1 },              // big bedroom
+        { from: PZ(17.4), to: PZ(21.4), y0: FLR + 0.95, y1: FLR + 2.1 },            // small bedroom
+      ],
     };
 
     // ------------------------------------------------------------ 4. wall framing (precut 2x4s)
@@ -207,9 +229,9 @@ export default {
     };
     const split = (list, a, b) => list.filter(o => o.from >= a - 0.01 && o.to <= b + 0.01);
     const frames = [
-      frame('x', X0, -1.7, ZF, split(O.front, X0, -1.7)), frame('x', -1.7, 1.7, ZF, split(O.front, -1.7, 1.7)), frame('x', 1.7, X1, ZF, split(O.front, 1.7, X1)),
+      frame('x', X0, -1.2, ZF, split(O.front, X0, -1.2)), frame('x', -1.2, 1.0, ZF, split(O.front, -1.2, 1.0)), frame('x', 1.0, X1, ZF, split(O.front, 1.0, X1)),
       frame('z', ZB, ZF, X1, O.east),
-      frame('x', 1.7, X1, ZB, split(O.back, 1.7, X1)), frame('x', -0.4, 1.7, ZB, []), frame('x', X0, -0.4, ZB, split(O.back, X0, -0.4)),
+      frame('x', -0.1, X1, ZB, split(O.back, -0.1, X1)), frame('x', -1.6, -0.1, ZB, split(O.back, -1.6, -0.1)), frame('x', X0, -1.6, ZB, split(O.back, X0, -1.6)),
       frame('z', ZB, ZF, X0, O.west),
     ];
 
@@ -277,24 +299,25 @@ export default {
     O.back.forEach(o => winX(o, ZB - 0.05, -1));
     O.east.forEach(o => winZ(o, X1 + 0.05, 1));
     O.west.forEach(o => winZ(o, X0 - 0.05, -1));
-    // picture window: extra mullions dividing it into a big centre pane
-    windows.block(-3.15, FLR + 0.5, ZB - 0.13, -3.1, FLR + 2.15, ZB - 0.07, M.trim);
-    windows.block(-1.5, FLR + 0.5, ZB - 0.13, -1.45, FLR + 2.15, ZB - 0.07, M.trim);
-    windows.block(-1.0, FLR, ZF + 0.02, -0.1, FLR + 2.05, ZF + 0.07, M.door);        // front door
-    windows.box(0.05, 0.05, 0.08, -0.25, FLR + 1.0, ZF + 0.1, M.chrome);
-    for (const [a, b] of [[-4.1, -2.5], [2.4, 3.8]]) {                                // shutters
+    // Thermopane window wall: mullions split it into tall panes
+    for (const v of [20.2, 24, 27.7]) windows.block(PX(v) - 0.03, FLR + 0.3, ZB - 0.13, PX(v) + 0.03, FLR + 2.25, ZB - 0.07, M.trim);
+    windows.block(PX(29), FLR, ZF + 0.02, PX(31.4), doorH, ZF + 0.07, M.door);       // front door
+    windows.box(0.05, 0.05, 0.08, PX(29.4), FLR + 1.0, ZF + 0.1, M.chrome);
+    windows.block(PX(12.6), FLR, ZB - 0.07, PX(15.2), doorH, ZB - 0.02, M.door);     // back door
+    for (const [a, b] of [[PX(7.2), PX(11.4)], [PX(21.3), PX(27.4)]]) {              // shutters
       windows.block(a - 0.5, FLR + 0.95, ZF + 0.1, a - 0.1, FLR + 2.15, ZF + 0.14, M.shutter);
       windows.block(b + 0.1, FLR + 0.95, ZF + 0.1, b + 0.5, FLR + 2.15, ZF + 0.14, M.shutter);
     }
-    windows.block(-1.3, 0, ZF + 0.1, 0.2, FLR - 0.02, ZF + 1.1, M.concrete);           // stoop
-    windows.block(-1.3, 0, ZF + 1.1, 0.2, 0.12, ZF + 1.5, M.concrete);
+    windows.block(PX(28.3), 0, ZF + 0.1, X1 + 0.5, FLR - 0.02, ZF + 1.1, M.concrete);   // front stoop
+    windows.block(PX(12), 0, ZB - 1.0, PX(16), FLR - 0.02, ZB - 0.1, M.concrete);        // back stoop
     const windowsG = add(windows);
 
     // ------------------------------------------------------------ 7. shingles, chimney, gutters
     const shingles = roofSlab(M.roof, 0.11, 0.05);
     const chimney = new Part('chimney');
-    chimney.block(X0 - 0.75, 0, -2.4, X0 - 0.08, RIDGE + 0.7, -1.4, M.brick);
-    chimney.block(X0 - 0.8, RIDGE + 0.6, -2.45, X0 - 0.03, RIDGE + 0.75, -1.35, M.concrete);
+    // the double fireplace sits in the middle of the house, so the chimney rises through the ridge
+    chimney.block(PX(24.6), WT, PZ(12.2), PX(27.3), RIDGE + 0.8, PZ(14.7), M.brick);
+    chimney.block(PX(24.4), RIDGE + 0.7, PZ(12.0), PX(27.5), RIDGE + 0.85, PZ(14.9), M.concrete);
     for (const s of [1, -1]) {
       const z = s * (ZF + EAVE + 0.05), y = WT - EAVE * Math.tan(PITCH) - 0.05;
       chimney.block(X0 - GOVER, y - 0.08, z - 0.06, X1 + GOVER, y + 0.04, z + 0.06, M.trim);
@@ -303,96 +326,132 @@ export default {
 
     // ------------------------------------------------------------ 8. inside
     const inside = new Part('inside');
+    const zHall0 = PZ(12), zHall1 = PZ(16.7), xBed = PX(12);      // bedroom wing
+    const zBath = PZ(16.9), xBathE = PX(17.9);                     // bathroom
+    const xStairE = PX(15.8);                                      // stair enclosure
+    const core = { x0: PX(18.2), x1: PX(28.3), z0: PZ(12.2), z1: PZ(14.7), heat: PX(20.2), fire: PX(23.6) };
     inside.block(X0 + 0.05, FLR, ZB + 0.05, X1 - 0.05, FLR + 0.01, ZF - 0.05, M.tile);
-    inside.block(X0 + 0.1, FLR + 0.01, 0.85, -1.25, FLR + 0.015, ZF - 0.1, M.lino);
+    inside.block(xBathE + 0.05, FLR + 0.01, core.z1, X1 - 0.05, FLR + 0.015, ZF - 0.05, M.lino);
     inside.block(X0, WT - 0.04, ZB, X1, WT, ZF, mat('#f2ece0', { emissive: '#45403a' }));   // ceiling
     // linings inside the outer walls
-    inside.wall('x', X0, X1, ZF - 0.04, FLR, WT - 0.04, 0.02, M.plaster, O.front);
+    const lineFront = (a, b, m) => inside.wall('x', a, b, ZF - 0.04, FLR, WT - 0.04, 0.02, m, O.front.filter(o => o.from >= a && o.to <= b));
+    lineFront(X0, xBathE, M.plaster); lineFront(xBathE, X1, M.kitchenWall);
     inside.wall('x', X0, X1, ZB + 0.04, FLR, WT - 0.04, 0.02, M.plaster, O.back);
-    inside.wall('z', ZB, ZF, X1 - 0.04, FLR, WT - 0.04, 0.02, M.plaster, O.east);
-    inside.wall('z', ZB, 0.8, X0 + 0.04, FLR, WT - 0.04, 0.02, M.plaster, []);
-    inside.wall('z', 0.8, ZF, X0 + 0.04, FLR, WT - 0.04, 0.02, M.kitchenWall, O.west);
-    inside.wall('x', X0, -1.25, ZF - 0.06, FLR, WT - 0.04, 0.01, M.kitchenWall, O.front.filter(o => o.to < -1.2));
+    inside.wall('z', ZB, core.z1, X1 - 0.04, FLR, WT - 0.04, 0.02, M.plaster, O.east);
+    inside.wall('z', core.z1, ZF, X1 - 0.04, FLR, WT - 0.04, 0.02, M.kitchenWall, O.east);
+    inside.wall('z', ZB, ZF, X0 + 0.04, FLR, WT - 0.04, 0.02, M.plaster, O.west);
     // interior walls
     const iw = (axis, a, b, f, ops, m = M.plaster) => inside.wall(axis, a, b, f, FLR, WT - 0.04, 0.1, m, ops);
-    iw('z', 0.8, ZF, -1.2, [{ from: 1.0, to: 1.9, y0: FLR, y1: FLR + 2.05 }], M.kitchenWall);
-    iw('x', X0, -1.2, 0.8, [{ from: -2.8, to: -1.6, y0: FLR, y1: FLR + 2.05 }], M.kitchenWall);
-    iw('z', 1.6, ZF, 0.4, [{ from: 1.75, to: 2.5, y0: FLR, y1: FLR + 2.05 }]);
-    iw('x', 0.4, 2.0, 1.6, []);
-    iw('z', 0.3, ZF, 2.0, [{ from: 0.5, to: 1.3, y0: FLR, y1: FLR + 2.05 }]);
-    iw('x', 1.2, X1, 0.3, [{ from: 1.3, to: 2.0, y0: FLR, y1: FLR + 2.05 }]);
-    iw('z', ZB, 0.3, 1.2, []);
+    const door = (a, b) => ({ from: a, to: b, y0: FLR, y1: doorH });
+    iw('x', X0, xBed, zHall0, [door(PX(8.8), PX(11.2))]);          // big bedroom / hall
+    iw('x', X0, xBed, zHall1, [door(PX(8.8), PX(11.2))]);          // small bedroom / hall
+    iw('z', ZB, zHall0, xBed, []);                                 // big bedroom / stairs
+    iw('z', zHall1, ZF, xBed, []);                                 // small bedroom / bath
+    iw('x', xBed, xBathE, zBath, [door(PX(13.4), PX(15.6))]);      // hall / bath
+    iw('z', zBath, ZF, xBathE, [], M.kitchenWall);                 // bath / kitchen
+    iw('z', ZB + 0.5, PZ(10), xStairE, [{ from: PZ(4.6), to: PZ(6.9), y0: FLR + 0.45, y1: FLR + 1.15 }]);  // stair wall, TV niche
+    iw('z', PZ(21.3), ZF, core.x1, []);                            // entry vestibule
+    // closets between the bedrooms
+    inside.block(X0 + 0.04, FLR, zHall0 + 0.05, PX(8.4), WT - 0.04, zHall1 - 0.05, M.plaster);
+    for (const [a, b] of [[zHall0 + 0.12, (zHall0 + zHall1) / 2 - 0.03], [(zHall0 + zHall1) / 2 + 0.03, zHall1 - 0.12]]) inside.block(PX(8.4), FLR + 0.05, a, PX(8.4) + 0.03, doorH, b, M.wood);
+    // stair closet
+    inside.block(xBed + 0.05, FLR, PZ(10), xStairE + 0.05, WT - 0.04, zHall0 - 0.05, M.plaster);
+    inside.block(xStairE + 0.05, FLR + 0.05, PZ(10) + 0.1, xStairE + 0.08, doorH, zHall0 - 0.12, M.wood);
+    // stairs up to the unfinished "expansion" attic
+    {
+      const n = 12, z0 = ZB + 0.5, z1 = PZ(10);
+      for (let i = 0; i < n; i++) {
+        const za = z0 + (z1 - z0) * (i / n), zb = z0 + (z1 - z0) * ((i + 1) / n);
+        inside.block(xBed + 0.06, FLR, za, xStairE - 0.06, FLR + (WT - FLR) * ((i + 1) / n), zb, M.wood);
+      }
+    }
+    // utility core: washer, radiant-heat boiler, double fireplace
+    inside.block(core.x0, FLR, core.z0, core.x1, WT - 0.04, core.z0 + 0.06, M.plaster);
+    inside.block(core.x0, FLR + 1.15, core.z0, core.heat, WT - 0.04, core.z1, M.cabinet);
+    inside.block(core.heat, FLR, core.z0, core.fire, WT - 0.04, core.z1 - 0.04, M.plaster);
+    inside.block(core.heat + 0.06, FLR + 0.05, core.z1 - 0.04, core.fire - 0.06, doorH, core.z1, M.wood);
+    inside.block(core.fire, FLR, core.z0, core.x1, WT - 0.04, core.z1, M.brick);
+    const fx = (core.fire + core.x1) / 2;
+    for (const [zFace, s] of [[core.z0, -1], [core.z1, 1]]) {
+      inside.block(fx - 0.38, FLR + 0.05, zFace - 0.01, fx + 0.38, FLR + 0.72, zFace + 0.01 * s, M.black);
+      inside.block(core.fire - 0.05, FLR + 1.1, zFace, core.x1 + 0.05, FLR + 1.17, zFace + s * 0.16, M.wood);   // mantel
+      inside.block(core.fire - 0.1, FLR, zFace, core.x1 + 0.1, FLR + 0.05, zFace + s * 0.45, M.brick);           // hearth
+    }
+    // movable storage wall between kitchen and living room (swung partly open)
+    inside.box(1.05, 1.95, 0.42, core.x1 + 0.6, FLR + 0.98, (core.z0 + core.z1) / 2 - 0.15, M.wood, [0, 0.35, 0]);
     const insideG = add(inside);
 
     const kitchen = new Part('kitchen');
-    // cabinets + counter + sink under the front window
-    kitchen.block(-4.85, FLR, ZF - 0.62, -2.0, FLR + 0.9, ZF - 0.06, M.cabinet);
-    kitchen.block(-4.88, FLR + 0.9, ZF - 0.65, -1.98, FLR + 0.95, ZF - 0.05, M.counter);
-    kitchen.block(-3.6, FLR + 0.9, ZF - 0.52, -3.0, FLR + 0.955, ZF - 0.15, M.chrome);
-    kitchen.cyl(0.02, 0.25, -3.3, FLR + 1.07, ZF - 0.12, M.chrome, null, 6);
-    // Bendix washing machine (front-loading)
-    kitchen.block(-1.95, FLR, ZF - 0.68, -1.3, FLR + 0.95, ZF - 0.08, M.enamel);
-    kitchen.add(new THREE.TorusGeometry(0.17, 0.03, 6, 16), M.chrome, [-1.625, FLR + 0.5, ZF - 0.69]);
-    kitchen.add(new THREE.CircleGeometry(0.15, 16), mat('#7d97a3'), [-1.625, FLR + 0.5, ZF - 0.69], [0, Math.PI, 0]);
-    // west wall: refrigerator, stove, cabinets
-    kitchen.block(-4.85, FLR, 0.95, -4.2, FLR + 1.6, 1.65, M.enamel);
-    kitchen.box(0.6, 0.12, 0.66, -4.53, FLR + 1.63, 1.3, M.enamel);
-    kitchen.box(0.04, 0.3, 0.04, -4.17, FLR + 1.15, 1.55, M.chrome);
-    kitchen.block(-4.85, FLR, 1.75, -4.2, FLR + 0.92, 2.55, M.enamel);
-    kitchen.block(-4.85, FLR + 0.92, 1.75, -4.75, FLR + 1.25, 2.55, M.enamel);
-    for (const [dx, dz] of [[-0.18, -0.2], [-0.18, 0.2], [0.12, -0.2], [0.12, 0.2]]) kitchen.cyl(0.09, 0.02, -4.52 + dx, FLR + 0.93, 2.15 + dz, M.black, null, 10);
-    kitchen.block(-4.85, FLR, 2.65, -4.25, FLR + 0.9, ZF - 0.62, M.cabinet);
-    kitchen.block(-4.88, FLR + 0.9, 2.65, -4.22, FLR + 0.95, ZF - 0.6, M.counter);
+    const kx = xBathE + 0.04;
+    // counter along the bathroom wall, with the sink, stove and refrigerator
+    kitchen.block(kx, FLR, PZ(19.4), kx + 0.6, FLR + 0.9, PZ(22.8), M.cabinet);
+    kitchen.block(kx, FLR + 0.9, PZ(19.4), kx + 0.63, FLR + 0.95, PZ(22.8), M.counter);
+    kitchen.block(kx + 0.1, FLR + 0.9, PZ(20.4), kx + 0.5, FLR + 0.955, PZ(22.0), M.chrome);
+    kitchen.cyl(0.02, 0.25, kx + 0.05, FLR + 1.07, PZ(21.2), M.chrome, null, 6);
+    kitchen.block(kx, FLR + 1.5, PZ(17.2), kx + 0.35, FLR + 2.25, PZ(22.8), M.cabinet);              // wall cabinets
+    kitchen.block(kx, FLR, PZ(17.3), kx + 0.65, FLR + 0.92, PZ(19.3), M.enamel);                      // stove
+    kitchen.block(kx, FLR + 0.92, PZ(17.3), kx + 0.1, FLR + 1.25, PZ(19.3), M.enamel);
+    for (const [dx, dz] of [[0.2, 0.18], [0.2, -0.18], [0.45, 0.18], [0.45, -0.18]]) kitchen.cyl(0.09, 0.02, kx + dx, FLR + 0.93, PZ(18.3) + dz, M.black, null, 10);
+    kitchen.block(kx, FLR, PZ(22.9), kx + 0.68, FLR + 1.6, ZF - 0.08, M.enamel);                       // refrigerator
+    kitchen.box(0.68, 0.12, 0.6, kx + 0.34, FLR + 1.63, (PZ(22.9) + ZF - 0.08) / 2, M.enamel);
+    kitchen.box(0.04, 0.3, 0.04, kx + 0.71, FLR + 1.15, PZ(23.2), M.chrome);
+    // Bendix washing machine in the utility core
+    kitchen.block(core.x0 + 0.04, FLR, core.z0 + 0.08, core.heat - 0.04, FLR + 0.9, core.z1, M.enamel);
+    kitchen.add(new THREE.TorusGeometry(0.16, 0.03, 6, 16), M.chrome, [(core.x0 + core.heat) / 2, FLR + 0.48, core.z1 + 0.01]);
+    kitchen.add(new THREE.CircleGeometry(0.14, 16), mat('#7d97a3'), [(core.x0 + core.heat) / 2, FLR + 0.48, core.z1 + 0.012]);
     // small table and chairs
-    kitchen.block(-3.5, FLR + 0.72, 0.95, -2.7, FLR + 0.76, 1.55, M.counter);
-    kitchen.cyl(0.03, 0.72, -3.1, FLR + 0.36, 1.25, M.chrome, null, 6);
-    for (const x of [-3.75, -2.45]) { kitchen.block(x - 0.2, FLR + 0.42, 1.05, x + 0.2, FLR + 0.47, 1.45, M.counter); kitchen.block(x - 0.2, FLR, 1.22, x + 0.2, FLR + 0.42, 1.28, M.chrome); }
+    kitchen.block(PX(22.5), FLR + 0.72, PZ(16.5), PX(25.5), FLR + 0.76, PZ(19), M.counter);
+    kitchen.cyl(0.03, 0.72, PX(24), FLR + 0.36, PZ(17.75), M.chrome, null, 6);
+    for (const x of [PX(21.6), PX(26.4)]) { kitchen.block(x - 0.2, FLR + 0.42, PZ(17) , x + 0.2, FLR + 0.47, PZ(18.5), M.counter); kitchen.block(x - 0.2, FLR, PZ(17.7), x + 0.2, FLR + 0.42, PZ(17.8), M.chrome); }
     const kitchenG = add(kitchen);
 
     const living = new Part('living');
-    // fireplace
-    living.block(X0 + 0.05, FLR, -2.75, X0 + 0.4, FLR + 1.45, -1.25, M.brick);
-    living.block(X0 + 0.39, FLR + 0.05, -2.3, X0 + 0.42, FLR + 0.75, -1.7, M.black);
-    living.block(X0 + 0.05, FLR + 1.45, -2.85, X0 + 0.5, FLR + 1.52, -1.15, M.wood);
-    living.block(X0 + 0.05, FLR, -2.95, X0 + 0.8, FLR + 0.06, -1.05, M.brick);
-    // built-in television
-    living.block(X0 + 0.05, FLR + 0.7, -0.95, X0 + 0.3, FLR + 1.5, -0.05, M.wood);
-    living.block(X0 + 0.3, FLR + 0.82, -0.85, X0 + 0.31, FLR + 1.38, -0.15, M.tv);
-    // sofa facing the fireplace
-    living.block(-0.1, FLR, -3.1, 0.75, FLR + 0.45, -1.0, M.sofa);
-    living.block(0.5, FLR + 0.45, -3.1, 0.75, FLR + 0.95, -1.0, M.sofa);
-    living.block(-0.1, FLR + 0.45, -3.1, 0.5, FLR + 0.65, -2.9, M.sofa);
-    living.block(-0.1, FLR + 0.45, -1.2, 0.5, FLR + 0.65, -1.0, M.sofa);
-    // armchair, coffee table, lamp, rug, curtains
-    living.block(-3.2, FLR, -0.3, -2.4, FLR + 0.42, 0.45, M.chair);
-    living.block(-3.2, FLR + 0.42, 0.25, -2.4, FLR + 0.9, 0.45, M.chair);
-    living.block(-1.9, FLR + 0.38, -2.4, -0.9, FLR + 0.43, -1.7, M.wood);
-    for (const [x, z] of [[-1.85, -2.35], [-0.95, -2.35], [-1.85, -1.75], [-0.95, -1.75]]) living.block(x - 0.02, FLR, z - 0.02, x + 0.02, FLR + 0.38, z + 0.02, M.wood);
-    living.cyl(0.015, 1.4, 0.9, FLR + 0.7, -3.4, M.chrome, null, 6);
-    living.cyl(0.12, 0.25, 0.9, FLR + 1.45, -3.4, M.curtain, null, 10, 0.18);
-    living.add(new THREE.BoxGeometry(3.0, 0.01, 2.4), M.rug, [-2.0, FLR + 0.016, -1.9]);
-    for (const x of [-4.25, -0.35]) living.block(x - 0.18, FLR + 0.3, ZB + 0.06, x + 0.18, WT - 0.15, ZB + 0.12, M.curtain);
+    // built-in television under the stairs (1950 model)
+    living.block(xStairE - 0.06, FLR + 0.45, PZ(4.6), xStairE + 0.02, FLR + 1.15, PZ(6.9), M.wood);
+    living.block(xStairE + 0.02, FLR + 0.53, PZ(4.8), xStairE + 0.03, FLR + 1.07, PZ(6.7), M.tv);
+    // sofa with its back to the window wall, facing the fireplace
+    living.block(PX(21), FLR, ZB + 0.35, PX(27.5), FLR + 0.45, ZB + 1.15, M.sofa);
+    living.block(PX(21), FLR + 0.45, ZB + 0.35, PX(27.5), FLR + 0.9, ZB + 0.6, M.sofa);
+    living.block(PX(21), FLR + 0.45, ZB + 0.35, PX(21) + 0.22, FLR + 0.65, ZB + 1.15, M.sofa);
+    living.block(PX(27.5) - 0.22, FLR + 0.45, ZB + 0.35, PX(27.5), FLR + 0.65, ZB + 1.15, M.sofa);
+    // armchair facing the TV, coffee table, lamp, rug, curtains
+    living.block(PX(18.5), FLR, PZ(5), PX(21), FLR + 0.42, PZ(7.6), M.chair);
+    living.block(PX(20.3), FLR + 0.42, PZ(5), PX(21), FLR + 0.9, PZ(7.6), M.chair);
+    living.block(PX(22.5), FLR + 0.38, PZ(5.2), PX(26), FLR + 0.43, PZ(7.2), M.wood);
+    for (const [x, z] of [[PX(22.7), PZ(5.4)], [PX(25.8), PZ(5.4)], [PX(22.7), PZ(7)], [PX(25.8), PZ(7)]]) living.block(x - 0.02, FLR, z - 0.02, x + 0.02, FLR + 0.38, z + 0.02, M.wood);
+    living.cyl(0.015, 1.4, PX(29.5), FLR + 0.7, ZB + 0.45, M.chrome, null, 6);
+    living.cyl(0.12, 0.25, PX(29.5), FLR + 1.45, ZB + 0.45, M.curtain, null, 10, 0.18);
+    living.add(new THREE.BoxGeometry(2.6, 0.01, 2.0), M.rug, [PX(24.2), FLR + 0.016, PZ(6.2)]);
+    for (const x of [PX(16.2), PX(31.5)]) living.block(x - 0.16, FLR + 0.3, ZB + 0.06, x + 0.16, WT - 0.15, ZB + 0.12, M.curtain);
     const livingG = add(living);
 
     const rooms = new Part('bedrooms');
-    for (const [x, z] of [[3.4, 2.2], [3.4, -2.0]]) {
-      rooms.block(x - 0.5, FLR, z - 1.0, x + 1.4, FLR + 0.5, z + 1.0, M.bed);
-      rooms.block(x + 1.3, FLR, z - 1.0, x + 1.45, FLR + 0.95, z + 1.0, M.wood);
-      rooms.block(x - 0.5, FLR + 0.5, z - 1.0, x + 1.0, FLR + 0.55, z + 1.0, M.blanket);
-    }
-    rooms.block(2.2, FLR, -3.7, 3.2, FLR + 1.1, -3.25, M.wood);
-    rooms.block(0.5, FLR, 2.9, 1.9, FLR + 0.55, 3.7, M.enamel);                         // bathtub
-    rooms.block(0.5, FLR, 1.7, 0.95, FLR + 0.8, 2.1, M.enamel);
+    // big bedroom (12' x 12'): double bed, dresser
+    rooms.block(X0 + 0.06, FLR, PZ(5.2), X0 + 2.0, FLR + 0.5, PZ(10), M.bed);
+    rooms.block(X0 + 0.06, FLR, PZ(5.2), X0 + 0.2, FLR + 1.0, PZ(10), M.wood);
+    rooms.block(X0 + 0.5, FLR + 0.5, PZ(5.2), X0 + 2.0, FLR + 0.55, PZ(10), M.blanket);
+    rooms.block(PX(6.4), FLR, ZB + 0.06, PX(10), FLR + 1.1, ZB + 0.5, M.wood);
+    // small bedroom (8' x 12'): single bed
+    rooms.block(X0 + 0.06, FLR, PZ(22), X0 + 2.0, FLR + 0.5, ZF - 0.08, M.bed);
+    rooms.block(X0 + 0.06, FLR, PZ(22), X0 + 0.2, FLR + 1.0, ZF - 0.08, M.wood);
+    rooms.block(X0 + 0.5, FLR + 0.5, PZ(22), X0 + 2.0, FLR + 0.55, ZF - 0.08, mat('#b5654a'));
+    // bathroom: tub under the window, toilet and sink on the kitchen wall
+    rooms.block(xBed + 0.06, FLR, ZF - 0.75, xBathE - 0.06, FLR + 0.55, ZF - 0.06, M.enamel);
+    rooms.block(xBed + 0.2, FLR + 0.3, ZF - 0.62, xBathE - 0.2, FLR + 0.56, ZF - 0.2, mat('#bcd6e0'));
+    rooms.block(xBathE - 0.25, FLR, PZ(18.6), xBathE - 0.06, FLR + 0.8, PZ(19.9), M.enamel);
+    rooms.block(xBathE - 0.6, FLR, PZ(18.8), xBathE - 0.25, FLR + 0.42, PZ(19.7), M.enamel);
+    rooms.block(xBathE - 0.45, FLR + 0.75, PZ(20.6), xBathE - 0.06, FLR + 0.9, PZ(22.2), M.enamel);
     const roomsG = add(rooms);
 
-    const lampA = new THREE.PointLight('#fff1d6', 2.2, 8, 1.2); lampA.position.set(-1.8, 2.1, -1.6);
-    const lampB = new THREE.PointLight('#fff1d6', 1.8, 7, 1.2); lampB.position.set(-3.0, 2.1, 2.2);
-    house.add(lampA, lampB);
+    const lampA = new THREE.PointLight('#fff1d6', 2.2, 8, 1.2); lampA.position.set(PX(24), 2.1, PZ(6));
+    const lampB = new THREE.PointLight('#fff1d6', 1.8, 7, 1.2); lampB.position.set(PX(24), 2.1, PZ(19));
+    const lampC = new THREE.PointLight('#fff1d6', 1.2, 7, 1.2); lampC.position.set(PX(6), 2.1, PZ(12));
+    house.add(lampA, lampB, lampC);
 
     // ------------------------------------------------------------ 9. yard
     const drive = new Part('drive');
     drive.block(5.4, 0, -3.4, 7.6, 0.06, STREET[0] - 0.2, M.concrete);
-    drive.block(-0.85, 0, ZF + 1.5, -0.25, 0.05, STREET[0] - 0.2, M.concrete);
+    drive.block(X1 + 0.5, 0, ZF + 0.2, 5.45, 0.05, ZF + 1.0, M.concrete);
     const driveG = add(drive);
     const carport = new Part('carport');
     for (const z of [-3.3, 0, 3.4]) carport.block(7.62, 0, z - 0.06, 7.74, 2.55, z + 0.06, M.trim);
@@ -400,8 +459,8 @@ export default {
     carport.block(X1 + 0.1, 2.66, -3.6, 7.9, 2.7, 3.9, M.roof);
     const carportG = add(carport);
     const plants = new Part('plants');
-    for (const x of [-4.2, -3.2, 1.6, 3.0, 4.2]) plants.add(new THREE.IcosahedronGeometry(0.42, 0), M.green, [x, 0.35, ZF + 0.6], [r(), r(), r()]);
-    for (const [x, z] of [[-5, 7.2], [2.5, 7.4], [3.5, -8.5]]) {
+    for (const x of [-4.3, -3.5, -0.4, 1.4, 2.7]) plants.add(new THREE.IcosahedronGeometry(0.42, 0), M.green, [x, 0.35, ZF + 0.6], [r(), r(), r()]);
+    for (const [x, z] of [[-5, 7.2], [2.5, 7.4], [-3.6, -9.5]]) {
       plants.cyl(0.05, 2.0, x, 1.0, z, mat('#5b4331'), null, 5);
       plants.add(new THREE.IcosahedronGeometry(0.7, 0), mat('#6f9a45', { flatShading: true }), [x, 2.3, z], [r(), r(), r()]);
     }
@@ -447,9 +506,9 @@ export default {
       slab: 'Another crew pours a concrete slab over the pipes. Each crew does just one job, then moves on to the next lot.',
       framing: 'Walls go up fast from precut lumber. Levitt broke building into twenty-seven steps, like a factory assembly line, except the workers move from house to house instead of the product moving.',
       roof: 'Roof framing and boards come next. At its peak, the company finished about thirty houses a day.',
-      skin: 'Siding, windows, and doors close in the house. Notice the big picture window. It faces the backyard, not the street.',
+      skin: 'Siding, windows, and doors close in the house. Around back, the living room gets a whole wall of glass. It faces the backyard, not the street.',
       roofing: 'Shingles and a brick chimney finish the outside. Every house uses the same parts, made in the same factories.',
-      inside: 'Inside, the house comes complete with a refrigerator, a stove, a washing machine, and even a television built into the wall, all for about eight thousand dollars.',
+      inside: 'Inside: a kitchen at the front, a living room at the back, two bedrooms, one bathroom, and stairs to an attic you could finish later. It all came with a refrigerator, a stove, and a washing machine, for about eight thousand dollars.',
       yard: 'Finally: a lawn, young fruit trees, a driveway, and a carport. Out here in the suburbs, a car is not a luxury. It is how you get everywhere.',
       finale: 'This is popular housing: mass-produced, standardized, and nearly identical from lot to lot. The same house could be built almost anywhere in America. Take a look around.',
     };
@@ -491,9 +550,11 @@ export default {
     const viewpoints = [
       { id: 'street', label: 'Across the street', pos: street, yaw: yawTo(street, [-0.5, 0, 0]), pitch: 0.05,
         markers: [{ pos: street }, { pos: [-29.8, 16, 30.7], label: 'Back down to the street' }] },
-      { id: 'kitchen', label: 'Kitchen', pos: [-1.8, FLR, 1.7], yaw: yawTo([-1.8, 0, 1.7], [-4.3, 0, 3.0]), pitch: -0.1 },
-      { id: 'living', label: 'Living room', pos: [-0.9, FLR, 0.3], yaw: yawTo([-0.9, 0, 0.3], [-4.9, 0, -1.6]), pitch: -0.05 },
-      { id: 'backyard', label: 'Backyard', pos: [-2, 0, -12], yaw: Math.PI, pitch: 0.08 },
+      { id: 'kitchen', label: 'Kitchen', pos: [PX(27.5), FLR, PZ(20)], yaw: yawTo([PX(27.5), 0, PZ(20)], [0.9, 0, 2.9]), pitch: -0.1 },
+      { id: 'living', label: 'Living room', pos: [PX(30.5), FLR, PZ(4)], yaw: yawTo([PX(30.5), 0, PZ(4)], [-0.06, 0, -1.2]), pitch: -0.05 },
+      { id: 'hall', label: 'Hallway', pos: [PX(14), FLR, PZ(14.4)], yaw: yawTo([PX(14), 0, PZ(14.4)], [-2.4, 0, 0.6]), pitch: 0 },
+      { id: 'bedroom', label: 'Bedroom', pos: [PX(9.5), FLR, PZ(3.5)], yaw: yawTo([PX(9.5), 0, PZ(3.5)], [-4.9, 0, -1.6]), pitch: -0.05 },
+      { id: 'backyard', label: 'Backyard', pos: [2.2, 0, -11.5], yaw: Math.PI, pitch: 0.08 },
       { id: 'tower', label: "Bird's-eye view", pos: tower, yaw: yawTo(tower, [2, 0, 4]), pitch: -0.35,
         markers: [{ pos: [-7, 0, 18.5], label: "Climb the tower: bird's-eye view" }] },
     ];
@@ -502,19 +563,25 @@ export default {
     const hotspots = [
       { id: 'assembly', title: '27 steps', pos: [-6.6, 3.0, 6.4],
         text: 'Levitt and Sons split building into 27 steps. Specialized crews moved from lot to lot, each doing one job, like an assembly line where the workers move instead of the product. At the peak they finished about 30 houses a day, and more than 17,000 in Levittown, New York.' },
-      { id: 'slab', title: 'No basement', pos: [-2.8, 0.9, -2.6],
+      { id: 'kitchen', title: 'Kitchen up front', pos: [PX(22.5), 2.2, ZF - 0.35],
+        text: 'The front door opens almost straight into the kitchen. Groceries did not have to travel far, and a parent at the counter could watch children playing out front. The plan was built around the 1950s idea of the nuclear family.' },
+      { id: 'slab', title: 'No basement', pos: [PX(21), 0.9, PZ(9.6)],
         text: 'The house sits on a concrete slab instead of a basement. Copper pipes inside the slab carry hot water to heat the floor. Skipping the basement saved time and money on every single house.' },
-      { id: 'kitchen', title: 'Kitchen up front', pos: [-3.3, 2.05, 3.0],
-        text: 'The kitchen faces the street, so a parent cooking could watch children playing out front. The plan was designed around the 1950s idea of the nuclear family.' },
-      { id: 'appliances', title: 'Appliances included', pos: [-4.0, 2.2, 1.3],
-        text: 'The refrigerator, stove, and Bendix washing machine came with the house. The 1949 ranch sold for about $7,990. Thanks to the GI Bill, many veterans paid nothing down and about $58 a month.' },
-      { id: 'tv', title: 'Built-in TV', pos: [-4.2, 2.1, -0.5],
-        text: 'The 1950 model even had a television built into the wall. TV spread the same shows, ads, and trends to millions of homes at once, a big reason popular culture spread so fast.' },
-      { id: 'picture', title: 'Picture window', pos: [-2.3, 2.6, -3.2],
-        text: 'The big picture window faces the private backyard, not the street. Family life turned inward, toward the backyard, instead of toward the front porch and the neighbors.' },
+      { id: 'appliances', title: 'Appliances included', pos: [kx + 0.45, 2.4, PZ(18.3)],
+        text: 'The refrigerator, stove, and Bendix washing machine came with the house. The 1949 ranch sold for about $7,990. Thanks to the GI Bill, many veterans paid almost nothing down and about $58 a month.' },
+      { id: 'core', title: 'Double fireplace', pos: [fx, 2.05, core.z0 - 0.55],
+        text: 'One fireplace opens to both the living room and the kitchen. Behind the same brick core sit the washing machine and the boiler that sends hot water through the floor pipes. Grouping the plumbing and heating in one spot made every house faster to build.' },
+      { id: 'storage', title: 'Storage wall', pos: [core.x1 + 0.6, 2.4, 0.15],
+        text: 'Instead of a fixed wall, a tall cabinet on a pivot divides the kitchen from the living room. Families could swing it to open up the space or close it off.' },
+      { id: 'attic', title: 'Room to grow', pos: [PX(14), 2.25, PZ(4.5)],
+        text: 'These stairs lead to an unfinished attic. Levitt sold it as room for expansion, so a growing family could add bedrooms later, often doing the work themselves.' },
+      { id: 'tv', title: 'Built-in TV', pos: [xStairE + 0.5, 1.7, PZ(5.75)],
+        text: 'Starting with the 1950 model, a television was built in under the stairs. TV spread the same shows, ads, and trends to millions of homes at once, a big reason popular culture spread so fast.' },
+      { id: 'picture', title: 'Window wall', pos: [PX(18.6), 2.55, ZB + 0.5],
+        text: 'The whole back of the living room is a wall of Thermopane glass facing the private backyard, not the street. Family life turned inward, toward the backyard, instead of toward the front porch and the neighbors.' },
       { id: 'car', title: 'The carport', pos: [6.5, 3.3, 2.0],
         text: 'Suburbs like Levittown were built around the car. Most residents drove to jobs in the city and drove to shop. Car-dependent suburbs spread out, and that pattern is called urban sprawl.' },
-      { id: 'rules', title: 'Rules for every yard', pos: [1.5, 1.9, -9],
+      { id: 'rules', title: 'Rules for every yard', pos: [-1.8, 1.9, -8.2],
         text: 'Levittown had strict rules: no fences, mow the lawn every week, and no laundry hanging outside on weekends. The rules kept every lot looking the same.' },
       { id: 'same', title: 'Same house, every lot', pos: [tower[0] + tDir.x * 5, tower[1] + 1.2, tower[2] + tDir.z * 5],
         text: 'Look down the street: the same house, again and again, with only the paint color changed. Popular housing is standardized and could be built almost anywhere. Its look comes from mass production, not from the local environment or local traditions.' },
@@ -523,7 +590,7 @@ export default {
     ];
 
     return {
-      root, occluders: [house], stages, viewpoints, hotspots,
+      root, occluders: [house], colliders: neighbours, ground: [towerG], stages, viewpoints, hotspots,
       fog: { color: '#e4ecf2', near: 120, far: 650 },
       light: { sky: '#e0ecfa', ground: '#6b7a50', hemi: 1.5, sunColor: '#fff4e0', sun: 2.6, sunDir: [-0.45, 1, 0.7], shadowSize: 18 },
     };

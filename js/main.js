@@ -46,7 +46,7 @@ const ui = {
       b.onclick = () => app.goTo(v.id);
       chips.appendChild(b);
     }
-    hint(touch ? 'Drag to look · Tap blue rings to move · Tap gold "i" to learn' : 'Drag to look · Click blue rings to move · Click gold "i" to learn', 7000);
+    hint(touch ? 'Walk with the joystick · Tap blue rings to jump · Tap gold "i" to learn' : 'Walk with arrows/WASD · Click blue rings to jump · Click gold "i" to learn', 7000);
   },
   onView(id) {
     for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-current', String(c.dataset.view === id));
@@ -93,7 +93,7 @@ async function load(id) {
   $('#hud').hidden = app.mode !== 'screen';
   $('#info').hidden = true;
   $('#loading').hidden = true;
-  if (app.mode === 'screen') hint(touch ? 'Drag to look around' : 'Drag to look around (or use the arrow keys)');
+  if (app.mode === 'screen') hint(touch ? 'Joystick to walk · drag to look around' : 'Arrow keys or WASD to walk · drag to look around');
 }
 
 /** Everything here runs inside the tap, so iOS/Android allow speech, sensors and VR. */
@@ -186,6 +186,7 @@ function boot() {
     $('.options .option').hidden = true;
     $('#vr-help').hidden = true;
   }
+  if (touch) setupStick();
   if (touch && !noVR) {
     $('#btn-motion').hidden = false;
     $('#btn-vr').hidden = false;
@@ -223,6 +224,31 @@ function boot() {
   // direct links: index.html#gassho or #levittown
   const fromHash = location.hash.slice(1);
   if (HOUSES[fromHash]) load(fromHash);
+}
+
+/** On-screen joystick for walking on touch screens. */
+function setupStick() {
+  const el = $('#stick'), knob = el.querySelector('.knob');
+  el.hidden = false;
+  let id = null;
+  const move = e => {
+    const r = el.getBoundingClientRect(), R = r.width / 2;
+    let x = e.clientX - (r.left + R), y = e.clientY - (r.top + R);
+    const d = Math.hypot(x, y), max = R - 12;
+    if (d > max) { x *= max / d; y *= max / d; }
+    knob.style.transform = `translate(${x}px, ${y}px)`;
+    app.stick.x = x / max; app.stick.y = y / max;
+  };
+  const stop = () => {
+    id = null;
+    el.classList.remove('active');
+    knob.style.transform = '';
+    app.stick.x = app.stick.y = 0;
+  };
+  el.addEventListener('pointerdown', e => { id = e.pointerId; el.setPointerCapture(id); el.classList.add('active'); move(e); e.preventDefault(); });
+  el.addEventListener('pointermove', e => { if (e.pointerId === id) move(e); });
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointercancel', stop);
 }
 
 function updateVRNote() {

@@ -9,6 +9,8 @@ A narrated 3D experience for AP Human Geography (Unit 3, Cultural Patterns and P
 | Built by | The whole village (*yui*) | Specialized crews in 27 assembly-line steps |
 | Shaped by | Heavy snow, local grass and timber, silk farming | Mass production, the car, the nuclear family |
 
+The Levittown interior follows the 1949 Levitt ranch sales-brochure floor plan (32′ × 25′): kitchen at the front with the entry, living room with a glass window wall at the back, a central core with the washer, heater and double fireplace, two bedrooms (12′ × 12′ and 8′ × 12′) with closets between, one bath, and stairs to the expansion attic. The 1950 extras (carport and the TV under the stairs) are included and labeled as such.
+
 It runs in any modern browser: Chromebooks, laptops, tablets and phones. On a phone it also works with a **Google Cardboard-style viewer**.
 
 ## Putting it on GitHub Pages
@@ -24,9 +26,9 @@ Direct links skip the home screen: add `#gassho` or `#levittown` to the end of t
 
 ## How students use it
 
-**On a Chromebook or laptop:** drag to look around (the arrow keys work too). Click the blue rings to move and the gold **i** buttons to read and hear more. Use **Pause**, **Next step** or **Skip to the tour** during the build.
+**On a Chromebook or laptop:** walk with the arrow keys or W A S D (↑/↓ or W/S move, ←/→ turn, A/D step sideways, hold Shift to hurry) and drag with the mouse to look around. Walls stop you, and you can step up onto floors and porches. Click the blue rings to jump to a spot and the gold **i** buttons to read and hear more. Use **Pause**, **Next step** or **Skip to the tour** during the build.
 
-**On a phone or tablet:** drag to look, or tap the phone icon to look around by moving the device.
+**On a phone or tablet:** walk with the joystick in the lower-left corner and drag anywhere else to look, or tap the phone icon to look around by moving the device. Attic floors in the farmhouse are reached with the blue rings at the ladders.
 
 **In Cardboard VR:** choose **Cardboard VR** on the home screen, tap **Start the tour**, turn the phone sideways and slide it into the viewer.
 - Look at a ring or an **i** for about two seconds to select it. The viewer's button also works.

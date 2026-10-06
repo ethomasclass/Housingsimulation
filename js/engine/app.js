@@ -79,6 +79,7 @@ export class App {
     this.capYaw = 0;
     this.hovered = null; this.dwell = 0; this.locked = false; this.gazeClock = 0;
     this.keys = new Set();
+    this.stick = { x: 0, y: 0 };   // on-screen joystick, set by the page
     this.fading = null;
     this.house = null;
 
@@ -522,6 +523,89 @@ export class App {
     this.reticle.userData.setActive(!!t);
   }
 
+  // ---------------------------------------------------------------- walking
+  /**
+   * Arrow keys / WASD and the on-screen joystick (this.stick, -1..1) move the
+   * viewer. Walls block movement; floors, steps and slopes are followed.
+   */
+  updateWalk(dt) {
+    if (!this.house || this.mode === 'xr' || this.fading) return;
+    const k = this.keys;
+    const on = (...names) => names.some(n => k.has(n));
+    let fwd = (on('arrowup', 'w') ? 1 : 0) - (on('arrowdown', 's') ? 1 : 0) - this.stick.y;
+    let side = (on('d') ? 1 : 0) - (on('a') ? 1 : 0) + this.stick.x;
+    const turn = (on('arrowleft', 'q') ? 1 : 0) - (on('arrowright', 'e') ? 1 : 0);
+    if (turn) {
+      if (this.lookSource === 'drag') this.yaw += turn * dt * 1.7;
+      else this.rig.rotation.y += turn * dt * 1.7;
+    }
+    const len = Math.hypot(fwd, side);
+    if (len < 0.08) return;
+    if (len > 1) { fwd /= len; side /= len; }
+    const yaw = this.cameraYaw();
+    const step = (on('shift') ? 4.2 : 2.2) * dt;
+    const dx = (-Math.sin(yaw) * fwd + Math.cos(yaw) * side) * step;
+    const dz = (-Math.cos(yaw) * fwd - Math.sin(yaw) * side) * step;
+    const moved = this.tryStep(dx, dz) || this.tryStep(dx, 0) || this.tryStep(0, dz);
+    if (moved && this.currentView) {
+      this.walked = (this.walked || 0) + Math.hypot(dx, dz);
+      if (this.walked > 0.6) {
+        this.currentView = null;
+        this.walked = 0;
+        this.updateExploreVisibility();
+        this.ui.onView?.(null);
+      }
+    }
+  }
+
+  walkTargets() {
+    return [...this.house.occluders, ...(this.house.colliders || [])].filter(o => o.visible);
+  }
+
+  firstVisibleHit(hits) {
+    for (const h of hits) {
+      if (h.object.isSprite) continue;          // smoke and labels are not solid
+      let ok = true;
+      for (let o = h.object; o; o = o.parent) if (!o.visible) { ok = false; break; }
+      if (ok) return h;
+    }
+    return null;
+  }
+
+  tryStep(dx, dz) {
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-5) return false;
+    const p = this.rig.position;
+    const ray = this.walkRay || (this.walkRay = Object.assign(new THREE.Raycaster(), { camera: this.camera }));
+    const targets = this.walkTargets();
+    _v2.set(dx / len, 0, dz / len);
+    for (const h of [0.45, 1.2]) {
+      ray.set(_v.set(p.x, p.y + h, p.z), _v2);
+      ray.far = len + 0.32;
+      if (this.firstVisibleHit(ray.intersectObjects(targets, true))) return false;
+    }
+    const floor = this.floorAt(p.x + dx, p.z + dz, p.y, targets);
+    if (floor === null) return false;
+    p.x += dx; p.z += dz; p.y = floor;
+    return true;
+  }
+
+  /** Height of the floor under (x, z), or null if it's a wall, a big step up, or a drop. */
+  floorAt(x, z, curY, targets) {
+    const ray = this.walkRay, down = new THREE.Vector3(0, -1, 0);
+    const list = [...targets, ...(this.house.ground || [])];
+    let best = -Infinity;
+    for (const [ox, oz] of [[0, 0], [0.14, 0], [-0.14, 0], [0, 0.14], [0, -0.14]]) {
+      ray.set(_v.set(x + ox, curY + 0.6, z + oz), down);
+      ray.far = 1.7;
+      const h = this.firstVisibleHit(ray.intersectObjects(list, true));
+      if (h) best = Math.max(best, h.point.y);
+    }
+    if (best === -Infinity) best = curY - 0 <= 1.0 ? 0 : -Infinity;   // open ground
+    if (best > curY + 0.46 || best < curY - 1.0) return null;
+    return best;
+  }
+
   // ---------------------------------------------------------------- loop
   loop() {
     const dt = Math.min(this.clock.getDelta(), 0.1);
@@ -529,10 +613,6 @@ export class App {
     const src = this.lookSource;
 
     if (src === 'drag') {
-      const turn = (this.keys.has('arrowleft') || this.keys.has('a') ? 1 : 0) - (this.keys.has('arrowright') || this.keys.has('d') ? 1 : 0);
-      const tilt = (this.keys.has('arrowup') || this.keys.has('w') ? 1 : 0) - (this.keys.has('arrowdown') || this.keys.has('s') ? 1 : 0);
-      this.yaw += turn * dt * 1.4;
-      this.pitch = THREE.MathUtils.clamp(this.pitch + tilt * dt * 1.0, -1.35, 1.35);
       this.camera.quaternion.setFromEuler(_e.set(this.pitch, this.yaw, 0, 'YXZ'));
     } else if (src === 'gyro' && this.orientation.hasData) {
       this.orientation.apply(this.camera.quaternion);
@@ -540,6 +620,7 @@ export class App {
       this.xrReady = true;
     }
     if (this.pendingFace) this.applyFace();
+    this.updateWalk(dt);
 
     if (this.timeline) this.timeline.update(dt);
     if (this.house?.update) this.house.update(dt, this.time);

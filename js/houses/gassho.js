@@ -69,6 +69,7 @@ export default {
     const villagePos = [[-30, -24], [30, -26], [-38, 18], [6, -46], [-8, 40], [50, -4], [-58, -10], [26, 36], [-46, -46]];
     const HILL = [48, 62], HILL_R = 26, HILL_H = 20;
     const look = [16, 0, 21];
+    let hillG;
     {
       const p = new Part('paddies');
       const rice = mat('#ffffff', { map: tex.rice(), uv: 4 });
@@ -116,7 +117,8 @@ export default {
       geo.computeVertexNormals();
       const p = new Part('hill');
       p.add(geo, mat('#6f7f45', { flatShading: true }), [HILL[0], HILL_H / 2, HILL[1]]);
-      env.add(p.build({ center: false }));
+      hillG = p.build({ center: false });
+      env.add(hillG);
     }
     {
       const p = new Part('trees');
@@ -535,7 +537,7 @@ export default {
 
     let smokeOn = false;
     return {
-      root, occluders: [house], stages, viewpoints, hotspots,
+      root, occluders: [house], colliders: village, ground: [hillG], stages, viewpoints, hotspots,
       fog: { color: '#d4dfe8', near: 140, far: 750 },
       light: { sky: '#d6e4f5', ground: '#6a5a40', hemi: 1.5, sunColor: '#ffe9c8', sun: 2.6, sunDir: [0.55, 1, 0.5], shadowSize: 22 },
       update(dt) {

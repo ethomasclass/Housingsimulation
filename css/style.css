@@ -156,6 +156,23 @@ h1 { font-size: clamp(30px, 6vw, 52px); margin: 0 0 10px; letter-spacing: -0.02e
   .info { top: 10px; bottom: 10px; transform: none; max-height: none; overflow-y: auto; left: auto; width: 360px; }
 }
 
+/* ---------- walking joystick (touch screens) ---------- */
+#stick {
+  position: absolute; left: max(16px, env(safe-area-inset-left)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 150px);
+  width: 112px; height: 112px; border-radius: 50%; touch-action: none;
+  background: radial-gradient(circle, rgba(18, 22, 30, 0.35) 0%, rgba(18, 22, 30, 0.7) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.28); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+#stick .knob {
+  position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); pointer-events: none;
+}
+#stick.active { border-color: var(--gold); }
+@media (max-width: 640px) { #stick { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 215px); } }
+@media (max-height: 480px) and (orientation: landscape) {
+  #stick { bottom: max(12px, env(safe-area-inset-bottom)); width: 100px; height: 100px; }
+}
+
 /* ---------- VR overlays ---------- */
 #vr-exit {
   position: fixed; z-index: 20; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
